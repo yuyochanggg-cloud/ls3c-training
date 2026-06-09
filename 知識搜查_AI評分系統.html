@@ -14,7 +14,7 @@
             --white: #FFFFFF;
             --border-color: #E0E0E0;
             --gold: #D4AF37;
-            --green: #4CAF50;
+            --green: #4CAF50;h
             --orange: #FF9800;
             --red: #F44336;
         }
@@ -679,7 +679,7 @@
             GROUPS.forEach(group => {
                 const option = document.createElement('option');
                 option.value = group.id;
-                option.textContent = group.label;
+                option.textContent = `${group.label} ─ ${group.topic}`;
                 select.appendChild(option);
             });
         }
