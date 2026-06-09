@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>良興3C - 知識搜查報告 AI 評分系統</title>
+    <style>
+        :root {
+            --primary-color: #1F4E79;
+            --primary-light: #2A6B9B;
+            --bg-color: #F4F7F6;
+            --text-color: #333333;
+            --text-light: #666666;
+            --white: #FFFFFF;
+            --border-color: #E0E0E0;
+            --gold: #D4AF37;
+            --green: #4CAF50;
+            --orange: #FF9800;
+            --red: #F44336;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'PingFang TC', 'Heiti TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.7;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            font-size: 18px;
+        }
+        header {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 0.6rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-title { display: flex; flex-direction: row; align-items: center; gap: 0.8rem; }
+        .header-title h1 { font-size: 1.3rem; font-weight: 600; white-space: nowrap; }
+        .header-title span { font-size: 0.95rem; opacity: 0.7; white-space: nowrap; }
+        .header-divider { opacity: 0.4; font-size: 1rem; }
+        .api-config {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+        .api-config input {
+            padding: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.9);
+            width: 250px;
+            font-size: 0.9rem;
+        }
+        .api-config button {
+            background-color: var(--white);
+            color: var(--primary-color);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .api-config button:hover { background-color: #E8E8E8; }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            background-color: var(--white);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tab-btn {
+            padding: 1rem 3rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--text-light);
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-btn:hover:not(.active) { color: var(--primary-light); }
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        .scoring-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 900px) { .scoring-layout { grid-template-columns: 1fr; } }
+        .card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-weight: bold;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: var(--text-color); }
+        select, textarea, input[type="number"] {
+            width: 100%;
+            padding: 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-family: inherit;
+        }
+        textarea { resize: vertical; min-height: 250px; }
+        .hint { font-size: 1rem; color: var(--text-light); margin-top: 0.25rem; display: block; }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--white);
+            border: none;
+            padding: 1.1rem;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 1.35rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-primary:hover { background-color: var(--primary-light); }
+        .btn-primary:disabled { background-color: #A0B4C6; cursor: not-allowed; }
+        .btn-text {
+            background: none;
+            border: none;
+            color: var(--primary-light);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .result-placeholder {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            text-align: center;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .score-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .group-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .group-topic { font-size: 1.15rem; color: var(--text-light); margin-top: 0.5rem; }
+        .total-score-circle {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .score-gold { background: linear-gradient(135deg, #FFD700, #FDB931); }
+        .score-green { background: linear-gradient(135deg, #4CAF50, #2E7D32); }
+        .score-orange { background: linear-gradient(135deg, #FF9800, #EF6C00); }
+        .score-red { background: linear-gradient(135deg, #F44336, #C62828); }
+        .criteria-list {
+            margin-bottom: 1.5rem;
+            background: #FAFAFA;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        .criterion-item { margin-bottom: 0.8rem; }
+        .criterion-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.2rem;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .progress-bar-bg { background-color: #E0E0E0; height: 8px; border-radius: 4px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background-color: var(--primary-color); transition: width 1s ease-out; }
+        .comments-section { display: grid; gap: 1rem; }
+        .comment-box { padding: 1rem; border-radius: 8px; border-left: 4px solid; background: #FAFAFA; }
+        .comment-box h4 { margin-bottom: 0.5rem; font-size: 1.2rem; }
+        .comment-summary { border-left-color: var(--primary-color); }
+        .comment-summary h4 { color: var(--primary-color); }
+        .comment-strength { border-left-color: var(--green); background: #F1F8E9; }
+        .comment-strength h4 { color: #2E7D32; }
+        .comment-improvement { border-left-color: var(--orange); background: #FFF3E0; }
+        .comment-improvement h4 { color: #E65100; }
+        .leaderboard-container { max-width: 1000px; margin: 0 auto; }
+        .rank-row {
+            display: flex;
+            align-items: center;
+            background: var(--white);
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border-left: 8px solid transparent;
+        }
+        .rank-row:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        .rank-num { font-size: 2.5rem; font-weight: bold; color: #BDBDBD; width: 60px; text-align: center; }
+        .rank-row:nth-child(1) .rank-num { color: #FFD700; }
+        .rank-row:nth-child(2) .rank-num { color: #C0C0C0; }
+        .rank-row:nth-child(3) .rank-num { color: #CD7F32; }
+        .rank-info { flex: 1; padding-left: 1rem; }
+        .rank-group-name { font-size: 2.2rem; font-weight: bold; margin-bottom: 0.2rem; }
+        .rank-topic { font-size: 1.3rem; color: var(--text-light); }
+        .rank-score { font-size: 4rem; font-weight: bold; padding: 0 1rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        .rank-details {
+            display: none;
+            width: 100%;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .rank-row.expanded { flex-wrap: wrap; }
+        .rank-row.expanded .rank-details { display: grid; animation: fadeIn 0.3s; }
+        .empty-state { text-align: center; padding: 4rem 0; color: var(--text-light); font-size: 1.2rem; }
+        .loader {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid var(--white);
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        #toast.error { background-color: var(--red); }
+        #toast.success { background-color: var(--green); }
+        @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+        @keyframes fadeout { from { bottom: 30px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+        #manual-scoring-area {
+            display: none;
+            background: #f9f9f9;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-top: 1rem;
+        }
+        .manual-criteria { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+
+        /* 圖片上傳區 */
+        .upload-zone {
+            border: 2px dashed var(--primary-light);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #F0F6FF;
+            margin-bottom: 1rem;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            background: #DCEEFF;
+            border-color: var(--primary-color);
+        }
+        .upload-zone p { color: var(--primary-color); font-size: 1rem; margin-top: 0.5rem; }
+        .upload-zone .upload-icon { font-size: 2.5rem; }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 8px;
+            margin-top: 0.8rem;
+        }
+        .preview-item {
+            position: relative;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .preview-item img { width: 100%; height: 70px; object-fit: cover; display: block; }
+        .preview-remove {
+            position: absolute;
+            top: 2px; right: 2px;
+            background: rgba(0,0,0,0.65);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px; height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .input-mode-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            background: #f5f5f5;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            color: var(--text-light);
+            transition: 0.2s;
+        }
+        .mode-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* 評分標準編輯器 */
+        .prompt-editor-wrap {
+            margin-top: 1rem;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 1rem;
+        }
+        .prompt-toggle-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .prompt-toggle-btn:hover { color: var(--primary-light); }
+        #prompt-editor {
+            display: none;
+            margin-top: 0.8rem;
+        }
+        #prompt-editor .hint {
+            background: #EFF7FF;
+            border: 1px solid #B3D4F5;
+            border-radius: 6px;
+            padding: 0.6rem 0.8rem;
+            color: #1F4E79;
+            font-size: 0.85rem;
+            margin-bottom: 0.6rem;
+        }
+        #prompt-textarea {
+            width: 100%;
+            min-height: 320px;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.8rem;
+            line-height: 1.5;
+            color: #333;
+        }
+        .prompt-apply-btn {
+            margin-top: 0.6rem;
+            padding: 0.5rem 1.5rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: bold;
+        }
+        .prompt-apply-btn:hover { background: var(--primary-light); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1>知識搜查報告 AI 評分系統</h1>
+            <span class="header-divider">｜</span>
+            <span>良興3C 中階幹訓 ｜ 模組二</span>
+        </div>
+        <div class="api-config">
+            <input type="password" id="api-key" placeholder="輸入 Google Gemini API Key" />
+            <button onclick="saveApiKey()">儲存設定</button>
+            <button onclick="clearAllData()" style="background:transparent; color:white; border:1px solid white;">清除所有紀錄</button>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('scoring-tab', this)">評分作業</button>
+        <button class="tab-btn" onclick="switchTab('leaderboard-tab', this)">排行榜（投影用）</button>
+    </div>
+
+    <main>
+        <!-- 分頁 1：評分作業 -->
+        <div id="scoring-tab" class="tab-content active">
+            <div class="scoring-layout">
+
+                <!-- 左側：輸入區 -->
+                <div class="card">
+                    <div class="card-title">
+                        輸入簡報資訊
+                        <button class="btn-text" onclick="toggleManualScoring()" id="toggle-manual-btn">API 故障？切換手動評分</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="group-select">選擇報告組別</label>
+                        <select id="group-select" onchange="updateTopicHint()">
+                            <option value="" disabled selected>請選擇組別...</option>
+                        </select>
+                        <span class="hint" id="topic-hint">請先選擇組別以顯示指定主題</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>簡報內容</label>
+                        <div class="input-mode-tabs">
+                            <button class="mode-btn active" id="mode-image-btn" onclick="switchInputMode('image')">📷 上傳截圖</button>
+                            <button class="mode-btn" id="mode-text-btn" onclick="switchInputMode('text')">📝 貼上文字</button>
+                        </div>
+
+                        <!-- 圖片上傳模式 -->
+                        <div id="image-input-area">
+                            <div class="upload-zone" id="upload-zone"
+                                onclick="document.getElementById('file-input').click()"
+                                ondragover="handleDragOver(event)"
+                                ondragleave="handleDragLeave(event)"
+                                ondrop="handleDrop(event)">
+                                <div class="upload-icon">🖼️</div>
+                                <p><strong>點擊或拖放</strong>簡報截圖到這裡</p>
+                                <p style="font-size:0.9rem; color:#888;">支援 JPG、PNG 截圖，或直接上傳 PDF 簡報檔</p>
+                            </div>
+                            <input type="file" id="file-input" accept="image/*,application/pdf" multiple style="display:none" onchange="handleFileSelect(event)">
+                            <div class="preview-grid" id="preview-grid"></div>
+                        </div>
+
+                        <!-- 文字貼上模式 -->
+                        <div id="text-input-area" style="display:none">
+                            <textarea id="presentation-text" placeholder="請貼入：&#10;1. 簡報的逐字稿或文字大綱&#10;2. NotebookLM 或 AI 產出的重點摘要&#10;3. 對他們報告內容的具體描述&#10;&#10;資料越詳細，AI 評分越精準！"></textarea>
+                        </div>
+
+                        <!-- 補充說明（兩種模式都顯示） -->
+                        <textarea id="extra-notes" placeholder="補充說明（選填）：可以說明報告時的補充資訊" style="min-height:70px; margin-top:0.5rem;"></textarea>
+                    </div>
+
+                    <!-- 手動評分區（預設隱藏） -->
+                    <div id="manual-scoring-area">
+                        <label>手動評分（各項滿分 20 分）</label>
+                        <div class="manual-criteria">
+                            <div><label>核心訊息清晰度</label><input type="number" id="manual-c1" min="0" max="20" value="0"></div>
+                            <div><label>語言白話程度</label><input type="number" id="manual-c2" min="0" max="20" value="0"></div>
+                            <div><label>問題覆蓋完整度</label><input type="number" id="manual-c3" min="0" max="20" value="0"></div>
+                            <div><label>實際情境與案例</label><input type="number" id="manual-c4" min="0" max="20" value="0"></div>
+                            <div><label>視覺排版品質</label><input type="number" id="manual-c5" min="0" max="20" value="0"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>整體評語（2 句話）</label>
+                            <textarea id="manual-summary" style="min-height: 60px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>最值得讚賞的亮點</label>
+                            <textarea id="manual-strength" style="min-height: 60px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>具體改善建議</label>
+                            <textarea id="manual-improvement" style="min-height: 60px;"></textarea>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" id="score-btn" onclick="executeScoring()">
+                        <span id="score-btn-text">開始 AI 評分</span>
+                        <div class="loader" id="score-loader"></div>
+                    </button>
+
+                    <!-- 評分標準編輯器 -->
+                    <div class="prompt-editor-wrap">
+                        <button class="prompt-toggle-btn" onclick="togglePromptEditor()" id="prompt-toggle-btn">
+                            <span id="prompt-arrow">▶</span> 查看 AI 評分標準（提示詞）
+                        </button>
+                        <div id="prompt-editor">
+                            <div class="hint">
+                                💡 這是 AI 用來評分的指令。你可以在這裡直接修改，修改後下一次評分即時生效。<br>
+                                課堂上可以投影讓學員看，了解 AI 評分的依據。
+                            </div>
+                            <textarea id="prompt-textarea"></textarea>
+                            <button class="prompt-apply-btn" onclick="applyPrompt()">套用修改</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：結果區 -->
+                <div class="card" style="display: flex; flex-direction: column;">
+                    <div class="card-title">評分結果卡</div>
+                    <div id="score-result-container" style="flex: 1;">
+                        <div class="result-placeholder" id="result-placeholder">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                            <p>等待評分中...<br>請在左側輸入資料並點擊開始評分</p>
+                        </div>
+                        <div id="actual-score-card" style="display: none;"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 分頁 2：排行榜 -->
+        <div id="leaderboard-tab" class="tab-content">
+            <div class="leaderboard-container">
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <h2 style="font-size: 2.5rem; color: var(--primary-color);">🏆 知識搜查報告 最終排行榜 🏆</h2>
+                    <p style="font-size: 1.2rem; color: var(--text-light);">點擊各組別可展開查看評語細節</p>
+                </div>
+                <div id="leaderboard-list">
+                    <div class="empty-state">目前尚未有任何評分紀錄。</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast">訊息</div>
+
+    <script>
+        // ── 1. 資料定義 ──────────────────────────────────────────
+
+        const GROUPS = [
+            { id: 'sunlight',   label: '陽光力組', topic: 'Thriving at Work（工作茁壯感）',        color: '#C62828' },
+            { id: 'warmth',     label: '暖心力組', topic: '情緒勞務（Emotional Labor）', color: '#6A1B9A' },
+            { id: 'excellence', label: '卓越力組', topic: 'KSA 三層次診斷模型',         color: '#1565C0' },
+            { id: 'solid',      label: '磐石力組', topic: 'BARS vs 傳統量表',            color: '#1B5E20' },
+            { id: 'flame',      label: '火焰力組', topic: '良興五力哲學根源',            color: '#9B2335' }
+        ];
+
+        const CRITERIA_MAP = {
+            clarity:        '核心訊息清晰度',
+            plain_language: '語言白話程度',
+            coverage:       '問題覆蓋完整度',
+            examples:       '實際情境與案例',
+            layout:         '視覺排版品質'
+        };
+
+        // ── 評分提示詞（可在前端即時修改）──
+        let SYSTEM_PROMPT = `你是一位企業內訓簡報品質評審。
+任務：評估這份報告是否能讓「沒有參與研究的同仁，在5分鐘內一目瞭然」。
+
+【評分方法：每項從滿分20分往下扣，扣完停在0分】
+
+1. 核心訊息清晰度（從20分扣）
+   -8分：看完整份報告，還是說不出一句話描述核心觀點
+   -5分：有觀點但分散，沒有明確結論或摘要
+   -3分：結論存在但需要反覆閱讀才找得到
+
+2. 語言白話程度（從20分扣）
+   -8分：每出現一個未解釋的英文全名或縮寫（例：Behaviorally Anchored Rating Scale、
+         Critical Incident Technique、Emotional Labor 等未加中文說明）→ 每個各扣8分
+   -10分：語氣像機器輸出、明顯未消化的 AI 複製貼上
+   -3分：有術語但附上了解釋
+
+3. 問題覆蓋完整度（從20分扣）
+   -12分：指定的3個核心問題完全沒有回答
+   -8分：只回答了1個問題
+   -4分：回答了2個問題，或有涉及但不夠清楚
+
+4. 實際情境與案例（從20分扣）
+   -12分：沒有提到良興、門市、或後勤的具體情境
+   -8分：只有抽象例子，沒有可想像的人物或場景
+   -5分：有情境但在公司外部或與良興無關
+   「有助於提升效率」「可以改善績效」這類空話不算案例，仍扣分
+
+5. 視覺排版品質（從20分扣）
+   -10分：任何一頁出現超過80字的純文字段落，每頁各算一次
+   -8分：完全沒有標題層次（所有文字同樣大小）
+   -5分：沒有任何條列、表格或視覺分區
+
+【鑑別度校準 — 嚴格遵守】
+你一次會評多份報告，分數必須有足夠的區分度：
+- 最好的報告：75-85分
+- 普通的報告：45-60分
+- 差的報告（有術語、文字牆、沒案例）：15-30分
+如果所有報告都在60分以上，代表你評得太寬鬆，請重新計算。
+30分鐘內準備的成果難以完美，即使最好的報告也請勿超過88分。
+
+【輸出格式：必須回傳純 JSON，不含任何 markdown code block】
+{
+  "group": "組別名稱",
+  "topic": "研究主題",
+  "scores": {
+    "clarity": 整數,
+    "plain_language": 整數,
+    "coverage": 整數,
+    "examples": 整數,
+    "layout": 整數
+  },
+  "total": 總分整數,
+  "summary": "2句話整體評語",
+  "strength": "最值得讚賞的具體說明",
+  "improvement": "一個具體可操作的改善建議"
+}`;
+
+        let scoreRecords = {};
+        let isManualMode = false;
+        let uploadedImages = [];   // { base64, mimeType, name }
+        let inputMode = 'image';   // 'image' | 'text'
+
+        // ── 2. 頁面初始化 ────────────────────────────────────────
+
+        window.onload = () => {
+            initGroupSelect();
+            loadApiKey();
+            loadScoreRecords();
+            document.getElementById('prompt-textarea').value = SYSTEM_PROMPT;
+        };
+
+        function initGroupSelect() {
+            const select = document.getElementById('group-select');
+            GROUPS.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = group.label;
+                select.appendChild(option);
+            });
+        }
+
+        // ── 3. UI 輔助 ───────────────────────────────────────────
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `show ${type}`;
+            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if (tabId === 'leaderboard-tab') renderLeaderboard();
+        }
+
+        function updateTopicHint() {
+            const select = document.getElementById('group-select');
+            const hint = document.getElementById('topic-hint');
+            const selectedGroup = GROUPS.find(g => g.id === select.value);
+            if (selectedGroup) {
+                hint.innerHTML = `指定主題：<strong>${selectedGroup.topic}</strong>`;
+                hint.style.color = selectedGroup.color;
+                if (scoreRecords[selectedGroup.id]) {
+                    renderScoreCard(selectedGroup.id, scoreRecords[selectedGroup.id]);
+                } else {
+                    document.getElementById('result-placeholder').style.display = 'flex';
+                    document.getElementById('actual-score-card').style.display = 'none';
+                }
+            } else {
+                hint.textContent = '請先選擇組別以顯示指定主題';
+                hint.style.color = 'var(--text-light)';
+            }
+        }
+
+        function toggleManualScoring() {
+            isManualMode = !isManualMode;
+            document.getElementById('manual-scoring-area').style.display = isManualMode ? 'block' : 'none';
+            document.getElementById('toggle-manual-btn').textContent = isManualMode ? '切換回 AI 評分' : 'API 故障？切換手動評分';
+            document.getElementById('score-btn-text').textContent = isManualMode ? '儲存手動評分' : '開始 AI 評分';
+        }
+
+        // ── 圖片上傳相關 ──────────────────────────────────────────
+
+        function switchInputMode(mode) {
+            inputMode = mode;
+            document.getElementById('image-input-area').style.display = mode === 'image' ? 'block' : 'none';
+            document.getElementById('text-input-area').style.display  = mode === 'text'  ? 'block' : 'none';
+            document.getElementById('mode-image-btn').classList.toggle('active', mode === 'image');
+            document.getElementById('mode-text-btn').classList.toggle('active', mode === 'text');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('upload-zone').classList.add('dragover');
+        }
+        function handleDragLeave(e) {
+            document.getElementById('upload-zone').classList.remove('dragover');
+        }
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('upload-zone').classList.remove('dragover');
+            processFiles([...e.dataTransfer.files]);
+        }
+        function handleFileSelect(e) {
+            processFiles([...e.target.files]);
+            e.target.value = '';
+        }
+
+        function processFiles(files) {
+            const validFiles = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
+            if (validFiles.length === 0) { showToast('請上傳圖片（JPG/PNG）或 PDF 檔案', 'error'); return; }
+            validFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target.result.split(',')[1];
+                    uploadedImages.push({ base64, mimeType: file.type, name: file.name });
+                    renderPreviews();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderPreviews() {
+            const grid = document.getElementById('preview-grid');
+            grid.innerHTML = '';
+            uploadedImages.forEach((img, i) => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                const isPdf = img.mimeType === 'application/pdf';
+                item.innerHTML = isPdf
+                    ? `<div style="height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#FFF3E0;padding:4px;">
+                          <span style="font-size:1.8rem;">📄</span>
+                          <span style="font-size:0.65rem;color:#666;text-align:center;word-break:break-all;line-height:1.2;">${img.name}</span>
+                       </div>
+                       <button class="preview-remove" onclick="removeImage(${i})">✕</button>`
+                    : `<img src="data:${img.mimeType};base64,${img.base64}" alt="${img.name}">
+                       <button class="preview-remove" onclick="removeImage(${i})">✕</button>`;
+                grid.appendChild(item);
+            });
+            const count = uploadedImages.length;
+            const zone = document.getElementById('upload-zone');
+            zone.querySelector('p').innerHTML = count > 0
+                ? `<strong>已上傳 ${count} 個檔案</strong>，點擊繼續新增`
+                : '<strong>點擊或拖放</strong>簡報截圖到這裡';
+        }
+
+        function removeImage(index) {
+            uploadedImages.splice(index, 1);
+            renderPreviews();
+        }
+
+        // ── 評分提示詞編輯器 ──────────────────────────────────────
+        function togglePromptEditor() {
+            const editor = document.getElementById('prompt-editor');
+            const arrow = document.getElementById('prompt-arrow');
+            const isHidden = editor.style.display === 'none';
+            editor.style.display = isHidden ? 'block' : 'none';
+            arrow.textContent = isHidden ? '▼' : '▶';
+        }
+
+        function applyPrompt() {
+            SYSTEM_PROMPT = document.getElementById('prompt-textarea').value;
+            showToast('評分標準已更新，下一次評分即時生效', 'success');
+        }
+
+        function getScoreColorClass(score) {
+            if (score >= 90) return 'score-gold';
+            if (score >= 70) return 'score-green';
+            if (score >= 50) return 'score-orange';
+            return 'score-red';
+        }
+
+        function getScoreColorHex(score) {
+            if (score >= 90) return '#FFD700';
+            if (score >= 70) return '#4CAF50';
+            if (score >= 50) return '#FF9800';
+            return '#F44336';
+        }
+
+        // ── 4. LocalStorage ──────────────────────────────────────
+
+        function saveApiKey() {
+            const key = document.getElementById('api-key').value.trim();
+            if (key) { localStorage.setItem('gemini_api_key', key); showToast('API Key 已儲存'); }
+            else showToast('請輸入 API Key', 'error');
+        }
+
+        function loadApiKey() {
+            const key = localStorage.getItem('gemini_api_key');
+            if (key) document.getElementById('api-key').value = key;
+        }
+
+        function saveScoreRecords() {
+            localStorage.setItem('lx_scoring_records', JSON.stringify(scoreRecords));
+        }
+
+        function loadScoreRecords() {
+            const records = localStorage.getItem('lx_scoring_records');
+            if (records) { try { scoreRecords = JSON.parse(records); } catch (e) { scoreRecords = {}; } }
+        }
+
+        function clearAllData() {
+            if (confirm('確定要清除所有評分紀錄與 API Key？此動作無法復原。')) {
+                localStorage.removeItem('lx_scoring_records');
+                localStorage.removeItem('gemini_api_key');
+                scoreRecords = {};
+                document.getElementById('api-key').value = '';
+                document.getElementById('result-placeholder').style.display = 'flex';
+                document.getElementById('actual-score-card').style.display = 'none';
+                renderLeaderboard();
+                showToast('所有資料已清除');
+            }
+        }
+
+        // ── 5. 核心評分 ──────────────────────────────────────────
+
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(`API 錯誤 (${response.status}): ${errData.error?.message || '未知錯誤'}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        async function executeScoring() {
+            const groupId = document.getElementById('group-select').value;
+            if (!groupId) { showToast('請先選擇組別', 'error'); return; }
+            const selectedGroup = GROUPS.find(g => g.id === groupId);
+            if (isManualMode) { processManualScore(selectedGroup); return; }
+
+            const apiKey = document.getElementById('api-key').value.trim() || '';
+            const extraNotes = document.getElementById('extra-notes').value.trim();
+
+            // 檢查是否有輸入（圖片或文字至少要有一個）
+            if (inputMode === 'image' && uploadedImages.length === 0 && !extraNotes) {
+                showToast('請上傳至少一張簡報截圖', 'error'); return;
+            }
+            if (inputMode === 'text' && !document.getElementById('presentation-text').value.trim() && !extraNotes) {
+                showToast('請輸入簡報內容描述', 'error'); return;
+            }
+
+            const btn = document.getElementById('score-btn');
+            const loader = document.getElementById('score-loader');
+            const btnText = document.getElementById('score-btn-text');
+            btn.disabled = true;
+            loader.style.display = 'block';
+            btnText.textContent = 'AI 正在分析中...';
+
+            try {
+                const textForPrompt = inputMode === 'text'
+                    ? document.getElementById('presentation-text').value.trim()
+                    : '';
+                const extraNotesFinal = document.getElementById('extra-notes').value.trim();
+
+                const userPromptText = `【評估對象】
+組別：${selectedGroup.label}
+指定研究主題：${selectedGroup.topic}
+${uploadedImages.length > 0 ? `\n【簡報截圖】已附上 ${uploadedImages.length} 張，請直接根據截圖內容評分。` : ''}
+${textForPrompt ? `\n【簡報文字大綱】\n${textForPrompt}` : ''}
+${extraNotesFinal ? `\n【補充說明】\n${extraNotesFinal}` : ''}
+
+請根據評分標準進行嚴格評分，回傳符合格式的純 JSON。`;
+
+                // 組合 parts（文字 + 圖片）
+                const parts = [{ text: userPromptText }];
+                uploadedImages.forEach(img => {
+                    parts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
+                });
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+                const response = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                        contents: [{ role: 'user', parts }],
+                        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
+                    })
+                });
+
+                const data = await response.json();
+                let resultJsonStr = data.candidates[0].content.parts[0].text;
+                let parsedResult;
+                try {
+                    parsedResult = JSON.parse(resultJsonStr);
+                } catch (e) {
+                    console.error('Raw AI Output:', resultJsonStr);
+                    throw new Error('AI 回傳格式非有效 JSON，請再試一次。');
+                }
+                if (!parsedResult.scores || typeof parsedResult.total !== 'number') {
+                    throw new Error('AI 回傳資料缺少分數欄位。');
+                }
+
+                scoreRecords[groupId] = parsedResult;
+                saveScoreRecords();
+                showToast(`已完成 ${selectedGroup.label} 的評分！`);
+                renderScoreCard(groupId, parsedResult);
+
+            } catch (error) {
+                console.error(error);
+                showToast(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+                btnText.textContent = '重新 AI 評分';
+            }
+        }
+
+        function processManualScore(group) {
+            const scores = {
+                clarity:        parseInt(document.getElementById('manual-c1').value) || 0,
+                plain_language: parseInt(document.getElementById('manual-c2').value) || 0,
+                coverage:       parseInt(document.getElementById('manual-c3').value) || 0,
+                examples:       parseInt(document.getElementById('manual-c4').value) || 0,
+                layout:         parseInt(document.getElementById('manual-c5').value) || 0,
+            };
+            const total = Object.values(scores).reduce((a, b) => a + b, 0);
+            const result = {
+                group: group.label, topic: group.topic, scores, total,
+                summary:     document.getElementById('manual-summary').value     || '無整體評語',
+                strength:    document.getElementById('manual-strength').value    || '無特別亮點',
+                improvement: document.getElementById('manual-improvement').value || '無具體建議'
+            };
+            scoreRecords[group.id] = result;
+            saveScoreRecords();
+            showToast(`已手動儲存 ${group.label} 的成績`);
+            renderScoreCard(group.id, result);
+        }
+
+        // ── 6. 渲染 ─────────────────────────────────────────────
+
+        function renderScoreCard(groupId, result) {
+            document.getElementById('result-placeholder').style.display = 'none';
+            const cardContainer = document.getElementById('actual-score-card');
+            cardContainer.style.display = 'block';
+            const groupDef = GROUPS.find(g => g.id === groupId);
+            const colorClass = getScoreColorClass(result.total);
+
+            let criteriaHtml = '';
+            for (const [key, value] of Object.entries(result.scores)) {
+                const label = CRITERIA_MAP[key] || key;
+                const pct = (value / 20) * 100;
+                criteriaHtml += `
+                    <div class="criterion-item">
+                        <div class="criterion-header">
+                            <span>${label}</span><span>${value} / 20</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width:${pct}%; background-color:${groupDef.color}"></div>
+                        </div>
+                    </div>`;
+            }
+
+            cardContainer.innerHTML = `
+                <div class="score-card-header">
+                    <div>
+                        <div class="group-badge" style="background-color:${groupDef.color}">${groupDef.label}</div>
+                        <div class="group-topic">${groupDef.topic}</div>
+                    </div>
+                    <div class="total-score-circle ${colorClass}">${result.total}</div>
+                </div>
+                <div class="criteria-list">${criteriaHtml}</div>
+                <div class="comments-section">
+                    <div class="comment-box comment-summary">
+                        <h4>總體評價</h4><p>${result.summary}</p>
+                    </div>
+                    <div class="comment-box comment-strength">
+                        <h4>👍 最大亮點</h4><p>${result.strength}</p>
+                    </div>
+                    <div class="comment-box comment-improvement">
+                        <h4>💡 改善建議</h4><p>${result.improvement}</p>
+                    </div>
+                </div>`;
+        }
+
+        function renderLeaderboard() {
+            const listContainer = document.getElementById('leaderboard-list');
+            listContainer.innerHTML = '';
+            const ranked = Object.keys(scoreRecords).map(id => ({
+                id, def: GROUPS.find(g => g.id === id), data: scoreRecords[id]
+            })).sort((a, b) => b.data.total - a.data.total);
+
+            if (ranked.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state">目前尚未有任何評分紀錄，請先完成評分。</div>';
+                return;
+            }
+            ranked.forEach((record, index) => {
+                const textColor = getScoreColorHex(record.data.total);
+                listContainer.innerHTML += `
+                    <div class="rank-row" style="border-left-color:${record.def.color}" onclick="this.classList.toggle('expanded')">
+                        <div class="rank-num">${index + 1}</div>
+                        <div class="rank-info">
+                            <div class="rank-group-name" style="color:${record.def.color}">${record.def.label}</div>
+                            <div class="rank-topic">${record.def.topic}</div>
+                        </div>
+                        <div class="rank-score" style="color:${textColor}">${record.data.total}</div>
+                        <div class="rank-details">
+                            <div style="background:#FAFAFA; padding:1rem; border-radius:8px;">
+                                <strong style="color:#2E7D32;">👍 亮點：</strong>
+                                <p style="margin-top:0.5rem; font-size:0.95rem;">${record.data.strength}</p>
+                            </div>
+                            <div style="background:#FAFAFA; padding:1rem; border-radius:8px;">
+                                <strong style="color:#E65100;">💡 建議：</strong>
+                                <p style="margin-top:0.5rem; font-size:0.95rem;">${record.data.improvement}</p>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+    </script>
+</body>
+</html>
