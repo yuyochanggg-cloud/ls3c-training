@@ -927,7 +927,7 @@ ${extraNotesFinal ? `\n【補充說明】\n${extraNotesFinal}` : ''}
 
                 const response = await fetchWithRetry(gasUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({
                         action: 'scoreReport',
                         systemPrompt: SYSTEM_PROMPT,
