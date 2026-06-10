@@ -14,7 +14,7 @@
             --white: #FFFFFF;
             --border-color: #E0E0E0;
             --gold: #D4AF37;
-            --green: #4CAF50;h
+            --green: #4CAF50;
             --orange: #FF9800;
             --red: #F44336;
         }
@@ -439,8 +439,8 @@
             <span>良興3C 中階幹訓 ｜ 模組二</span>
         </div>
         <div class="api-config">
-            <input type="password" id="api-key" placeholder="輸入 Google Gemini API Key" />
-            <button onclick="saveApiKey()">儲存設定</button>
+            <input type="text" id="gas-url" placeholder="貼上 GAS 部署網址" style="width:360px" />
+            <button onclick="saveGasUrl()">儲存設定</button>
             <button onclick="clearAllData()" style="background:transparent; color:white; border:1px solid white;">清除所有紀錄</button>
         </div>
     </header>
@@ -669,7 +669,7 @@
 
         window.onload = () => {
             initGroupSelect();
-            loadApiKey();
+            loadGasUrl();
             loadScoreRecords();
             document.getElementById('prompt-textarea').value = SYSTEM_PROMPT;
         };
@@ -827,15 +827,15 @@
 
         // ── 4. LocalStorage ──────────────────────────────────────
 
-        function saveApiKey() {
-            const key = document.getElementById('api-key').value.trim();
-            if (key) { localStorage.setItem('gemini_api_key', key); showToast('API Key 已儲存'); }
-            else showToast('請輸入 API Key', 'error');
+        function saveGasUrl() {
+            const url = document.getElementById('gas-url').value.trim();
+            if (url) { localStorage.setItem('gas_url', url); showToast('GAS 網址已儲存'); }
+            else showToast('請輸入 GAS 部署網址', 'error');
         }
 
-        function loadApiKey() {
-            const key = localStorage.getItem('gemini_api_key');
-            if (key) document.getElementById('api-key').value = key;
+        function loadGasUrl() {
+            const url = localStorage.getItem('gas_url');
+            if (url) document.getElementById('gas-url').value = url;
         }
 
         function saveScoreRecords() {
@@ -848,11 +848,11 @@
         }
 
         function clearAllData() {
-            if (confirm('確定要清除所有評分紀錄與 API Key？此動作無法復原。')) {
+            if (confirm('確定要清除所有評分紀錄與 GAS 網址？此動作無法復原。')) {
                 localStorage.removeItem('lx_scoring_records');
-                localStorage.removeItem('gemini_api_key');
+                localStorage.removeItem('gas_url');
                 scoreRecords = {};
-                document.getElementById('api-key').value = '';
+                document.getElementById('gas-url').value = '';
                 document.getElementById('result-placeholder').style.display = 'flex';
                 document.getElementById('actual-score-card').style.display = 'none';
                 renderLeaderboard();
@@ -885,7 +885,8 @@
             const selectedGroup = GROUPS.find(g => g.id === groupId);
             if (isManualMode) { processManualScore(selectedGroup); return; }
 
-            const apiKey = document.getElementById('api-key').value.trim() || '';
+            const gasUrl = document.getElementById('gas-url').value.trim() || localStorage.getItem('gas_url') || '';
+            if (!gasUrl) { showToast('請先設定 GAS 部署網址', 'error'); btn.disabled = false; loader.style.display = 'none'; btnText.textContent = '🤖 AI 評分'; return; }
             const extraNotes = document.getElementById('extra-notes').value.trim();
 
             // 檢查是否有輸入（圖片或文字至少要有一個）
@@ -924,19 +925,20 @@ ${extraNotesFinal ? `\n【補充說明】\n${extraNotesFinal}` : ''}
                     parts.push({ inline_data: { mime_type: img.mimeType, data: img.base64 } });
                 });
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-                const response = await fetchWithRetry(url, {
+                const response = await fetchWithRetry(gasUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-                        contents: [{ role: 'user', parts }],
-                        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
+                        action: 'scoreReport',
+                        systemPrompt: SYSTEM_PROMPT,
+                        userPrompt: userPromptText,
+                        images: uploadedImages.map(img => ({ mimeType: img.mimeType, base64: img.base64 }))
                     })
                 });
 
                 const data = await response.json();
-                let resultJsonStr = data.candidates[0].content.parts[0].text;
+                if (!data.success) throw new Error(data.msg || 'GAS 評分失敗');
+                let resultJsonStr = data.result;
                 let parsedResult;
                 try {
                     parsedResult = JSON.parse(resultJsonStr);
